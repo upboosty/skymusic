@@ -5,24 +5,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - name: Unpack source
         run: |
-          unzip -q -o skymusic-mod-source.zip
-          sed -i "s/fabric-loom' version '[^']*'/fabric-loom' version '1.9-SNAPSHOT'/" skymusic/build.gradle
+          ls -la
+          ZIP=$(find . -maxdepth 2 -iname 'skymusic-mod-source*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "::error::No skymusic-mod-source*.zip found in the repo. Upload it to the repo root."
+            exit 1
+          fi
+          echo "Using $ZIP"
+          unzip -q -o "$ZIP"
           grep fabric-loom skymusic/build.gradle
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.12
           cache-disabled: true
+
       - name: Build
         id: build
         continue-on-error: true
         working-directory: skymusic
         run: gradle build --no-daemon --console=plain > build.log 2>&1
+
       - name: Show real error as annotations
         if: steps.build.outcome == 'failure'
         working-directory: skymusic
@@ -30,6 +41,7 @@ jobs:
           echo "::error title=BUILD LOG (last 12 lines)::$(tail -n 12 build.log | sed 's/$/%0A/' | tr -d '\n')"
           grep -nE "error:|What went wrong|Could not|FAILED" -A3 build.log | head -40 | while IFS= read -r l; do echo "::warning::$l"; done
           exit 1
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
