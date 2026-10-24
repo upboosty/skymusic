@@ -19,3 +19,4 @@ jobs:
         with:
           name: skymusic-jar
           path: skymusic/build/libs/skymusic-1.0.0.jar
+
