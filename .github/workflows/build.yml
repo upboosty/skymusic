@@ -15,8 +15,9 @@ jobs:
           gradle-version: 8.7
       - run: gradle build --no-daemon
         working-directory: skymusic
+      - run: ls -la skymusic/build/libs
       - uses: actions/upload-artifact@v4
         with:
           name: skymusic-jar
-          path: skymusic/build/libs/skymusic-1.0.0.jar
-
+          path: skymusic/build/libs/*.jar
+          if-no-files-found: error
