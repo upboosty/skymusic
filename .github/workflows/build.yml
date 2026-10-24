@@ -4,20 +4,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: unzip -q skymusic-mod-source.zip
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - name: Unpack source
+        run: |
+          ls -la
+          unzip -q -o skymusic-mod-source.zip
+          ls -la skymusic
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v3
+      - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
-      - run: gradle build --no-daemon
+          cache-disabled: true
+      - name: Build
+        id: build
+        continue-on-error: true
         working-directory: skymusic
-      - run: ls -la skymusic/build/libs
+        run: gradle build --no-daemon --console=plain > build.log 2>&1
+      - name: Show real error as annotations
+        if: steps.build.outcome == 'failure'
+        working-directory: skymusic
+        run: |
+          echo "::error title=BUILD LOG (last 12 lines)::$(tail -n 12 build.log | sed 's/$/%0A/' | tr -d '\n')"
+          grep -nE "error:|What went wrong|Could not|FAILED" -A3 build.log | head -40 | while IFS= read -r l; do echo "::warning::$l"; done
+          exit 1
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: skymusic-jar
-          path: skymusic/build/libs/*.jar
-          if-no-files-found: error
+          path: |
+            skymusic/build/libs/*.jar
+            skymusic/build.log
+          if-no-files-found: warn
